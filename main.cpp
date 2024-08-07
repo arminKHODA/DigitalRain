@@ -8,11 +8,14 @@
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 const int FONT_SIZE = 16;
+const int TRAIL_LENGTH = 10; // Number of trail frames
+const int TRAIL_OPACITY_DECREMENT = 25; // Opacity decrement per trail frame
 
 struct Character {
     int x, y;
     char ch;
     int speed;
+    SDL_Color color;
 };
 
 std::vector<Character> characters;
@@ -24,6 +27,10 @@ char getRandomChar() {
     return charset[rand() % (sizeof(charset) - 1)];
 }
 
+SDL_Color getRandomColor() {
+    return SDL_Color{ 0, static_cast<Uint8>(rand() % 156 + 100), 0, 255 };
+}
+
 void initCharacters(int numCharacters) {
     characters.clear();
     for (int i = 0; i < numCharacters; ++i) {
@@ -32,23 +39,32 @@ void initCharacters(int numCharacters) {
         c.y = rand() % (SCREEN_HEIGHT / FONT_SIZE) * FONT_SIZE;
         c.ch = getRandomChar();
         c.speed = 1 + rand() % 5;
+        c.color = getRandomColor();
         characters.push_back(c);
     }
 }
 
 void renderCharacter(Character& c) {
+    for (int i = 0; i < TRAIL_LENGTH; ++i) {
+        int opacity = 255 - i * TRAIL_OPACITY_DECREMENT;
+        SDL_Color color = c.color;
+        color.a = opacity;
+        SDL_Surface* surface = TTF_RenderText_Solid(font, &c.ch, color);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Rect destRect = { c.x, c.y - i * FONT_SIZE, FONT_SIZE, FONT_SIZE };
+        SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+        SDL_SetTextureAlphaMod(texture, opacity);
+        SDL_RenderCopy(renderer, texture, NULL, &destRect);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+    }
+
     c.ch = getRandomChar();
-    SDL_Color color = { 0, 255, 0, 255 };
-    SDL_Surface* surface = TTF_RenderText_Solid(font, &c.ch, color);
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_Rect destRect = { c.x, c.y, FONT_SIZE, FONT_SIZE };
-    SDL_RenderCopy(renderer, texture, NULL, &destRect);
-    SDL_FreeSurface(surface);
-    SDL_DestroyTexture(texture);
     c.y += c.speed;
     if (c.y >= SCREEN_HEIGHT) {
         c.y = 0;
         c.x = rand() % (SCREEN_WIDTH / FONT_SIZE) * FONT_SIZE;
+        c.color = getRandomColor();
     }
 }
 
